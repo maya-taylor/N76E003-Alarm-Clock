@@ -5,7 +5,7 @@
 ;Can adjust the clocks hours, minutes, seconds and AM/PM
 ;Can adjust the alarm's hours, minutes, AM/PM and set it/turn it on
 ;Alarm will not go off if not in "ON" mode
-;When alarm goes off it will ask you a math-ish question and evaluate your response
+;When alarm goes off it will ask you a boolean algebra question and evaluate your response
 ;If your response is incorrect, you will receive a "Think Harder!!" message
 ;Alarm will only turn off if you enter the answer correctly
 ;Note: buttons can be held down to increase
@@ -92,6 +92,7 @@ clk_am_pm: ds 1 ;stores whether the clock is in AM or PM mode
 alarm_am_pm: ds 1 ;stores whether the alarm is in AM or PM mode
 
 alarm_ans: ds 1 ;stores the answer being entered into the Alarm question
+q_count: ds 1 ;keeps track of how which question to ask on the next alarm
 
 
 
@@ -122,13 +123,17 @@ PM : db 'P', 0
 
 ALARM_1: db          '  1011 & 1100?   ', 0
 ALARM_2: db          'ANSWER IN DEC:     ', 0
-	;answer is 8
+	;answer is 1000 which is 8
 FAIL_1: db           ' THINK HARDER!!   ', 0
 FAIL_2: db           '                  ', 0
 
 ALARM_3: db          '  0011 ^ 0101?  ', 0
-ALARM_4: db          ' ANSWER IN DEC:  ', 0
-	;answer is 7
+ALARM_4: db          'ANSWER IN DEC:  ', 0
+;answer is 0110, which is 6
+
+ALARM_5: db          '  0011 | 0101?  ', 0
+ALARM_6: db          'ANSWER IN DEC:  ', 0
+	;answer is 0111 which is 7
 ;---------------------------------;
 ; Routine to initialize the ISR   ;
 ; for timer 0                     ;
@@ -206,7 +211,7 @@ Timer2_ISR:
 Inc_Done:
 	; Check if half second has passed
 	mov a, Count1ms+0
-	cjne a, #low(50), Timer2_ISR_done_extend
+	cjne a, #low(1000), Timer2_ISR_done_extend
 	sjmp jump_fix_inc
 	;CHANGE THIS TO 500 FOR 1/2 A SECOND
 Timer2_ISR_done_extend:
@@ -214,7 +219,7 @@ Timer2_ISR_done_extend:
 	
 jump_fix_inc:
 	mov a, Count1ms+1
-	cjne a, #high(50), Timer2_ISR_done
+	cjne a, #high(1000), Timer2_ISR_done
 	;CHANGE THIS TO 500 FOR 1/2 A SECOND
 	
 	; 500 milliseconds have passed.  Set a flag so the main program knows
@@ -333,6 +338,7 @@ main:
 	
 	mov alarm_am_pm, #0x00
 	mov clk_am_pm, #0x00
+	mov q_count, #0x00
 	mov R3, #0x00
 	mov R4, #0x00
 	
@@ -405,7 +411,7 @@ no_o_flow_sec:
 	
 check_am_pm:
 	jb AM_PM, check_set  ; if the 'CLEAR' button is not pressed skip
-	Wait_Milli_Seconds(#100)	; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+	Wait_Milli_Seconds(#150)	; Debounce delay.  This macro is also in 'LCD_4bit.inc'
 	jb AM_PM, check_set ; if the 'CLEAR' button is not pressed skip
 	
 	;have R1 be whether the clk is AM or PM
@@ -629,11 +635,32 @@ sound_the_alarm:
 	mov alarm_ans, #0x00
 	
 	setb ET0  ; Enable timer 0 interrupt, timer zero interrupt sounds the alarm
+
+	;check which message should be displayed
+	mov a, q_count
+	cjne a, #0x00, question_1_disp
+	
+question_0_disp:
 	Set_Cursor(1, 1)
 	Send_Constant_String(#ALARM_1)
 	Set_Cursor(2, 1)
 	Send_Constant_String(#ALARM_2)
 	ljmp check_ans_button
+	
+question_1_disp:
+	cjne a, #0x01, question_2_disp
+	Set_Cursor(1, 1)
+	Send_Constant_String(#ALARM_3)
+	Set_Cursor(2, 1)
+	Send_Constant_String(#ALARM_4)
+	ljmp check_ans_button
+	
+question_2_disp:
+	Set_Cursor(1, 1)
+	Send_Constant_String(#ALARM_5)
+	Set_Cursor(2, 1)
+	Send_Constant_String(#ALARM_6)
+	ljmp check_ans_button		
 	
 fail_message:
 	Set_Cursor(1, 1)
@@ -687,6 +714,10 @@ check_ans:
 	jb SET_IT, check_ans_button_extend ; if the 'SET_IT' button is not pressed skip	
 	
 	;if answer is right continue
+	mov a, q_count
+	cjne a, #0x00, question_1_check
+	
+question_0_check: ;want answer 8	
 	mov a, alarm_ans
 	subb a, #0x08
 	da a 
@@ -696,7 +727,37 @@ check_ans:
 	subb a, alarm_ans
 	da a 
 	cjne a, #0x00, fail_message_extend
+	mov q_count, #0x01
+	ljmp question_passed
 	
+question_1_check:
+	cjne a, #0x01, question_2_check
+	mov a, alarm_ans
+	subb a, #0x06
+	da a 
+	cjne a, #0x00, fail_message_extend
+	mov a, #0x06
+	
+	subb a, alarm_ans
+	da a 
+	cjne a, #0x00, fail_message_extend
+	mov q_count, #0x02
+	ljmp question_passed
+	
+question_2_check:
+	mov a, alarm_ans
+	subb a, #0x07
+	da a 
+	cjne a, #0x00, fail_message_extend
+	mov a, #0x07
+	
+	subb a, alarm_ans
+	da a 
+	cjne a, #0x00, fail_message_extend
+	mov q_count, #0x00
+	ljmp question_passed
+	
+question_passed:	
 	mov R3, #0x00
 	clr ET0  ; Enable timer 0 interrupt
 	
