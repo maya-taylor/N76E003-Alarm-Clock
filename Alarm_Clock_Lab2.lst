@@ -46,7 +46,7 @@
 0000             48   
 0000             49   ; Reset vector
 0000             50   org 0x0000
-0000 020271      51       ljmp main
+0000 020276      51       ljmp main
 0003             52   
 0003             53   ; External interrupt 0 vector (not used in this code)
 0003             54   org 0x0003
@@ -259,11 +259,11 @@
 020D 8003       215            sjmp jump_fix_inc
 020F            216            ;CHANGE THIS TO 500 FOR 1/2 A SECOND
 020F            217   Timer2_ISR_done_extend:
-020F 02026C     218            ljmp Timer2_ISR_done
+020F 020271     218            ljmp Timer2_ISR_done
 0212            219            
 0212            220   jump_fix_inc:
 0212 E531       221            mov a, Count1ms+1
-0214 B40355     222            cjne a, #high(1000), Timer2_ISR_done
+0214 B4035A     222            cjne a, #high(1000), Timer2_ISR_done
 0217            223            ;CHANGE THIS TO 500 FOR 1/2 A SECOND
 0217            224            
 0217            225            ; 500 milliseconds have passed.  Set a flag so the main program knows
@@ -286,7 +286,7 @@
 0229            242   ;this is checking the overflows of the seconds
 0229            243   check_if_60:
 0229 E532       244            mov a, BCD_counter
-022B B4603C     245            cjne a, #0x60, skip_hours ;number 60
+022B B46041     245            cjne a, #0x60, skip_hours ;number 60
 022E 753200     246            mov BCD_counter, #0x00
 0231            247            
 0231            248   continue_check_if_60:
@@ -300,7 +300,7 @@
 023A 2401       256            add a, #0x01
 023C D4         257            da a
 023D            258            
-023D B46024     259            cjne a, #0x60, do_not_rst_mins ;making it clr if minutes too high
+023D B46016     259            cjne a, #0x60, do_not_rst_mins ;making it clr if minutes too high
 0240 E4         260            clr a
 0241 7400       261            mov a, #0x00
 0243 D4         262            da a
@@ -310,934 +310,940 @@
 0246 E534       266            mov a, BCD_counter2
 0248 2401       267            add a, #0x01
 024A D4         268            da a
-024B B4131A     269            cjne a, #0x13, do_not_rst_hours ;making it clr if hours too high
+024B B4130C     269            cjne a, #0x13, do_not_rst_hours ;making it clr if hours too high
 024E E4         270            clr a
 024F 7401       271            mov a, #0x01
 0251 D4         272            da a
 0252 F534       273            mov BCD_counter2, a
-0254            274            
-0254 E4         275            clr a
-0255 E53A       276            mov a, clk_am_pm
-0257 B40005     277            cjne a, #0x00, overflow_to_am
-025A            278            ;adding a sequence to chnage from AM to PM
-025A            279            
-025A            280   overflow_to_pm:
-025A 753A01     281            mov clk_am_pm, #0x01            
-025D 800B       282            sjmp skip_hours
-025F            283            
-025F            284   overflow_to_am:
-025F 753A00     285            mov clk_am_pm, #0x00
-0262 8006       286            sjmp skip_hours
-0264            287   
-0264            288   do_not_rst_mins:
-0264 F533       289            mov BCD_counter1, a
-0266 8002       290            sjmp skip_hours
-0268            291   
-0268            292   do_not_rst_hours:
-0268 F534       293            mov BCD_counter2, a
-026A            294            
-026A            295   skip_hours:
-026A D2CA       296            setb TR2                ; Start timer 2
-026C            297   
-026C            298   
-026C            299   Timer2_ISR_done:
-026C D0D0       300            pop psw
-026E D0E0       301            pop acc
-0270 32         302            reti
+0254 8019       274            sjmp skip_hours
+0256            275            
+0256            276            ;clr a
+0256            277            ;mov a, clk_am_pm
+0256            278            ;cjne a, #0x00, overflow_to_am
+0256            279            ;adding a sequence to chnage from AM to PM
+0256            280   
+0256            281   do_not_rst_mins:
+0256 F533       282            mov BCD_counter1, a
+0258 8015       283            sjmp skip_hours
+025A            284   
+025A            285   do_not_rst_hours:
+025A F534       286            mov BCD_counter2, a
+025C B41210     287            cjne a, #0x12, skip_hours
+025F E4         288            clr a
+0260 E53A       289            mov a, clk_am_pm
+0262 B40005     290            cjne a, #0x00, overflow_to_am
+0265            291            
+0265            292   overflow_to_pm:
+0265 753A01     293            mov clk_am_pm, #0x01            
+0268 8005       294            sjmp skip_hours
+026A            295            
+026A            296   overflow_to_am:
+026A 753A00     297            mov clk_am_pm, #0x00
+026D 8000       298            sjmp skip_hours
+026F            299            
+026F            300            
+026F            301   skip_hours:
+026F D2CA       302            setb TR2                ; Start timer 2
 0271            303   
 0271            304   
-0271            305   ;---------------------------------;
-0271            306   ; Main program. Includes hardware ;
-0271            307   ; initialization and 'forever'    ;
-0271            308   ; loop.                           ;
-0271            309   ;---------------------------------;
-0271            310   main:
-0271            311            ; Initialization
-0271 75817F     312       mov SP, #0x7F
-0274 75B100     313       mov P0M1, #0x00
-0277 75B200     314       mov P0M2, #0x00
-027A 75B300     315       mov P1M1, #0x00
-027D 75B400     316       mov P1M2, #0x00
-0280 75AD00     317       mov P3M2, #0x00
-0283 75AD00     318       mov P3M2, #0x00
-0286            319             
-0286 1201BA     320       lcall Timer0_Init
-0289 1201DB     321       lcall Timer2_Init
-028C D2AF       322       setb EA   ; Enable Global interrupts
-028E 120087     323       lcall LCD_4BIT
-0291            324       ; For convenience a few handy macros are included in 'LCD_4bit.inc':
-0291 C0E0       325            push acc
-0293 7401       325            mov a, #1
-0295 14         325            dec a
-0296 1200C7     325            lcall ?Set_Cursor_1 ; Select column and row
-0299 D0E0       325            pop acc
-029B C083       326            push dph
-029D C082       326            push dpl
-029F C0E0       326            push acc
-02A1 9000E2     326            mov dptr, #Initial_Message
-02A4 1200BA     326            lcall ?Send_Constant_String
-02A7 D0E0       326            pop acc
-02A9 D082       326            pop dpl
-02AB D083       326            pop dph
-02AD            327       
-02AD C0E0       328            push acc
-02AF 7401       328            mov a, #1
-02B1 14         328            dec a
-02B2 1200C5     328            lcall ?Set_Cursor_2 ; Select column and row
-02B5 D0E0       328            pop acc
-02B7 C083       329            push dph
-02B9 C082       329            push dpl
-02BB C0E0       329            push acc
-02BD 9000F3     329            mov dptr, #Initial_Message2
-02C0 1200BA     329            lcall ?Send_Constant_String
-02C3 D0E0       329            pop acc
-02C5 D082       329            pop dpl
-02C7 D083       329            pop dph
-02C9            330       
-02C9 D200       331       setb half_seconds_flag
-02CB 753500     332            mov BCD_counter_temp, #0x00
-02CE 753600     333            mov BCD_counter1_temp, #0x00
-02D1 753701     334            mov BCD_counter2_temp, #0x01
-02D4            335   
-02D4 753800     336            mov BCD_alarm_min, #0x00
-02D7 753901     337            mov BCD_alarm_hour, #0x01
-02DA            338            
-02DA 753B00     339            mov alarm_am_pm, #0x00
-02DD 753A00     340            mov clk_am_pm, #0x00
-02E0 753D00     341            mov q_count, #0x00
-02E3 7B00       342            mov R3, #0x00
-02E5 7C00       343            mov R4, #0x00
-02E7            344            
-02E7            345   setting_time: ;this is where all the clock times are set
-02E7            346            
-02E7            347   check_hour:      
-02E7 C0E0       348            push acc
-02E9 7407       348            mov a, #7
-02EB 14         348            dec a
-02EC 1200C7     348            lcall ?Set_Cursor_1 ; Select column and row
-02EF D0E0       348            pop acc
-02F1 C000       349            push ar0
-02F3 A837       349            mov r0, BCD_counter2_temp
-02F5 1200CC     349            lcall ?Display_BCD
-02F8 D000       349            pop ar0
-02FA            350            
-02FA 20961E     351            jb HR_BUTTON, check_mins  ; if the 'CLEAR' button is not pressed skip
-02FD C002       352            push AR2
-02FF 7A64       352            mov R2, #100
-0301 120038     352            lcall ?Wait_Milli_Seconds
-0304 D002       352            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-0306 209612     353            jb HR_BUTTON, check_mins ; if the 'CLEAR' button is not pressed skip
-0309            354            
-0309 E537       355            mov a, BCD_counter2_temp ;incrementing the minutes
-030B 2401       356            add a, #0x01
-030D D4         357            da a
-030E            358            
-030E B41308     359            cjne a, #0x13, no_o_flow_hr  ;making it clr if hour too high
-0311 E4         360            clr a
-0312 7401       361            mov a, #0x01
-0314 D4         362            da a
-0315 F537       363            mov BCD_counter2_temp, a
-0317            364            
-0317 8002       365            sjmp check_mins
-0319            366            ;need to deal with overflow
-0319            367   no_o_flow_hr:
-0319 F537       368            mov BCD_counter2_temp, a
-031B            369   
-031B            370   check_mins:      
-031B C0E0       371            push acc
-031D 740A       371            mov a, #10
-031F 14         371            dec a
-0320 1200C7     371            lcall ?Set_Cursor_1 ; Select column and row
-0323 D0E0       371            pop acc
-0325 C000       372            push ar0
-0327 A836       372            mov r0, BCD_counter1_temp
-0329 1200CC     372            lcall ?Display_BCD
-032C D000       372            pop ar0
-032E            373            
-032E 20951C     374            jb MIN_BUTTON, check_secs  ; if the 'CLEAR' button is not pressed skip
-0331 C002       375            push AR2
-0333 7A64       375            mov R2, #100
-0335 120038     375            lcall ?Wait_Milli_Seconds
-0338 D002       375            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-033A 209510     376            jb MIN_BUTTON, check_secs ; if the 'CLEAR' button is not pressed skip
-033D            377            
-033D E536       378            mov a, BCD_counter1_temp ;incrementing the minutes
-033F 2401       379            add a, #0x01
-0341 D4         380            da a
-0342            381            
-0342 B46006     382            cjne a, #0x60, no_o_flow_min  ;making it clr if minutes too high
-0345 E4         383            clr a
-0346 7400       384            mov a, #0x00
-0348 D4         385            da a
-0349 F536       386            mov BCD_counter1_temp, a
-034B            387            
-034B            388   no_o_flow_min:
-034B F536       389            mov BCD_counter1_temp, a
-034D            390            
-034D            391   check_secs:      
-034D C0E0       392            push acc
-034F 740D       392            mov a, #13
-0351 14         392            dec a
-0352 1200C7     392            lcall ?Set_Cursor_1 ; Select column and row
-0355 D0E0       392            pop acc
-0357 C000       393            push ar0
-0359 A835       393            mov r0, BCD_counter_temp
-035B 1200CC     393            lcall ?Display_BCD
-035E D000       393            pop ar0
-0360            394            
-0360 20901C     395            jb SEC_BUTTON, check_am_pm  ; if the 'CLEAR' button is not pressed skip
-0363 C002       396            push AR2
-0365 7A64       396            mov R2, #100
-0367 120038     396            lcall ?Wait_Milli_Seconds
-036A D002       396            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-036C 209010     397            jb SEC_BUTTON, check_am_pm ; if the 'CLEAR' button is not pressed skip
-036F            398            
-036F E535       399            mov a, BCD_counter_temp ;incrementing the minutes
-0371 2401       400            add a, #0x01
-0373 D4         401            da a
-0374            402            
-0374 B46006     403            cjne a, #0x60, no_o_flow_sec  ;making it clr if minutes too high
-0377 E4         404            clr a
-0378 7400       405            mov a, #0x00
-037A D4         406            da a
-037B F535       407            mov BCD_counter_temp, a
-037D            408            
-037D            409   no_o_flow_sec:
-037D F535       410            mov BCD_counter_temp, a
-037F            411            
-037F            412   check_am_pm:
-037F 209143     413            jb AM_PM, check_set  ; if the 'CLEAR' button is not pressed skip
-0382 C002       414            push AR2
-0384 7A96       414            mov R2, #150
-0386 120038     414            lcall ?Wait_Milli_Seconds
-0389 D002       414            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-038B 209137     415            jb AM_PM, check_set ; if the 'CLEAR' button is not pressed skip
-038E            416            
-038E            417            ;have R1 be whether the clk is AM or PM
-038E            418            ;if R1 is 0 it is AM, if its 1 its PM
-038E E53A       419            mov a, clk_am_pm
-0390 701B       420            jnz change_to_am
-0392            421            
-0392            422   change_to_pm:
-0392 753A01     423            mov clk_am_pm, #0x01
-0395 C0E0       424            push acc
-0397 7410       424            mov a, #16
-0399 14         424            dec a
-039A 1200C7     424            lcall ?Set_Cursor_1 ; Select column and row
-039D D0E0       424            pop acc
-039F C0E0       425            push acc
-03A1 7450       425            mov a, #'P'
-03A3 12007D     425            lcall ?WriteData
-03A6 D0E0       425            pop acc                 
-03A8 801B       426            sjmp check_set
-03AA            427            
-03AA            428   jump_extend: ;extending the jump to setting time
-03AA 0202E7     429            ljmp setting_time       
-03AD            430            
-03AD            431   change_to_am:
-03AD 753A00     432            mov clk_am_pm, #0x0
-03B0 C0E0       433            push acc
-03B2 7410       433            mov a, #16
-03B4 14         433            dec a
-03B5 1200C7     433            lcall ?Set_Cursor_1 ; Select column and row
-03B8 D0E0       433            pop acc
-03BA C0E0       434            push acc
-03BC 7441       434            mov a, #'A'
-03BE 12007D     434            lcall ?WriteData
-03C1 D0E0       434            pop acc
-03C3 8000       435            sjmp check_set
-03C5            436            
-03C5            437   check_set:       
-03C5 2092E2     438            jb SET_IT, jump_extend  ; if the 'SET_IT' button is not pressed skip
-03C8 C002       439            push AR2
-03CA 7A32       439            mov R2, #50
-03CC 120038     439            lcall ?Wait_Milli_Seconds
-03CF D002       439            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-03D1 2092D6     440            jb SET_IT, jump_extend ; if the 'SET_IT' button is not pressed skip
-03D4            441            
-03D4 7B00       442            mov R3, #0
-03D6            443            
-03D6            444            ;moving the counters over to their real counterparts which are used by Timer 2
-03D6            445            ;the temp variables helped prevent the timer from increasing them as they were being entered
-03D6 C0E0       446            push acc
-03D8 7401       446            mov a, #1
-03DA 14         446            dec a
-03DB 1200C5     446            lcall ?Set_Cursor_2 ; Select column and row
-03DE D0E0       446            pop acc
-03E0 853532     447            mov BCD_Counter, BCD_Counter_temp
-03E3 853633     448            mov BCD_Counter1, BCD_Counter1_temp
-03E6 853734     449            mov BCD_Counter2, BCD_Counter2_temp
-03E9 C083       450            push dph
-03EB C082       450            push dpl
-03ED C0E0       450            push acc
-03EF 900115     450            mov dptr, #Alarm_Off
-03F2 1200BA     450            lcall ?Send_Constant_String
-03F5 D0E0       450            pop acc
-03F7 D082       450            pop dpl
-03F9 D083       450            pop dph;string to say alarm is in off mode
-03FB            451            
-03FB            452            ; After initialization the program stays in this 'forever' loop
-03FB            453   loop:
-03FB            454                    
-03FB            455       
-03FB            456   check_clk_am_set:
-03FB E53A       457            mov a, clk_am_pm
-03FD 7015       458            jnz set_clk_pm
-03FF            459            
-03FF            460   set_clk_am:      
-03FF C0E0       461            push acc
-0401 7410       461            mov a, #16
-0403 14         461            dec a
-0404 1200C7     461            lcall ?Set_Cursor_1 ; Select column and row
-0407 D0E0       461            pop acc
-0409 C0E0       462            push acc
-040B 7441       462            mov a, #'A'
-040D 12007D     462            lcall ?WriteData
-0410 D0E0       462            pop acc
-0412 8013       463            sjmp check_alarm_hour
-0414            464            
-0414            465   set_clk_pm:
-0414 C0E0       466            push acc
-0416 7410       466            mov a, #16
-0418 14         466            dec a
-0419 1200C7     466            lcall ?Set_Cursor_1 ; Select column and row
-041C D0E0       466            pop acc
-041E C0E0       467            push acc
-0420 7450       467            mov a, #'P'
-0422 12007D     467            lcall ?WriteData
-0425 D0E0       467            pop acc
-0427            468            
-0427            469   
-0427            470   check_alarm_hour:        
-0427 C0E0       471            push acc
-0429 7407       471            mov a, #7
-042B 14         471            dec a
-042C 1200C5     471            lcall ?Set_Cursor_2 ; Select column and row
-042F D0E0       471            pop acc
-0431 C000       472            push ar0
-0433 A839       472            mov r0, BCD_alarm_hour
-0435 1200CC     472            lcall ?Display_BCD
-0438 D000       472            pop ar0
-043A            473            
-043A 20961E     474            jb HR_BUTTON, check_alarm_mins  ; if the 'CLEAR' button is not pressed skip
-043D C002       475            push AR2
-043F 7A64       475            mov R2, #100
-0441 120038     475            lcall ?Wait_Milli_Seconds
-0444 D002       475            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-0446 209612     476            jb HR_BUTTON, check_alarm_mins ; if the 'CLEAR' button is not pressed skip
-0449            477            
-0449 E539       478            mov a, BCD_alarm_hour ;incrementing the minutes
-044B 2401       479            add a, #0x01
-044D D4         480            da a
-044E            481            
-044E B41308     482            cjne a, #0x13, no_o_flow_alarm_hr  ;making it clr if hour too high
-0451 E4         483            clr a
-0452 7401       484            mov a, #0x01
-0454 D4         485            da a
-0455 F539       486            mov BCD_alarm_hour, a
-0457            487            
-0457 8002       488            sjmp check_alarm_mins
-0459            489            ;need to deal with overflow
-0459            490   no_o_flow_alarm_hr:
-0459 F539       491            mov BCD_alarm_hour, a
-045B            492   
-045B            493   check_alarm_mins:        
-045B C0E0       494            push acc
-045D 740A       494            mov a, #10
-045F 14         494            dec a
-0460 1200C5     494            lcall ?Set_Cursor_2 ; Select column and row
-0463 D0E0       494            pop acc
-0465 C000       495            push ar0
-0467 A838       495            mov r0, BCD_alarm_min
-0469 1200CC     495            lcall ?Display_BCD
-046C D000       495            pop ar0
-046E            496            
-046E 20951C     497            jb MIN_BUTTON, check_alarm_am_pm  ; if the 'CLEAR' button is not pressed skip
-0471 C002       498            push AR2
-0473 7A64       498            mov R2, #100
-0475 120038     498            lcall ?Wait_Milli_Seconds
-0478 D002       498            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-047A 209510     499            jb MIN_BUTTON, check_alarm_am_pm ; if the 'CLEAR' button is not pressed skip
-047D            500            
-047D E538       501            mov a, BCD_alarm_min ;incrementing the minutes
-047F 2401       502            add a, #0x01
-0481 D4         503            da a
-0482            504            
-0482 B46006     505            cjne a, #0x60, no_o_flow_alarm_min  ;making it clr if minutes too high
-0485 E4         506            clr a
-0486 7400       507            mov a, #0x00
-0488 D4         508            da a
-0489 F538       509            mov BCD_alarm_min, a
-048B            510            
-048B            511   no_o_flow_alarm_min:
-048B F538       512            mov BCD_alarm_min, a
-048D            513            
-048D            514   check_alarm_am_pm:
-048D 20913E     515            jb AM_PM, check_alarm_set  ; if the 'CLEAR' button is not pressed skip
-0490 C002       516            push AR2
-0492 7AFA       516            mov R2, #250
-0494 120038     516            lcall ?Wait_Milli_Seconds
-0497 D002       516            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-0499 209132     517            jb AM_PM, check_alarm_set ; if the 'CLEAR' button is not pressed skip
-049C            518            
-049C            519            ;have R1 be whether the clk is AM or PM
-049C            520            ;if R1 is 0 it is AM, if its 1 its PM
-049C E53B       521            mov a, alarm_am_pm
-049E 7018       522            jnz change_to_alarm_am
-04A0            523            
-04A0            524   change_to_alarm_pm:
-04A0 753B01     525            mov alarm_am_pm, #0x1
-04A3 C0E0       526            push acc
-04A5 740D       526            mov a, #13
-04A7 14         526            dec a
-04A8 1200C5     526            lcall ?Set_Cursor_2 ; Select column and row
-04AB D0E0       526            pop acc
-04AD C0E0       527            push acc
-04AF 7450       527            mov a, #'P'
-04B1 12007D     527            lcall ?WriteData
-04B4 D0E0       527            pop acc                 
-04B6 8016       528            sjmp check_alarm_set
-04B8            529   
-04B8            530            
-04B8            531   change_to_alarm_am:
-04B8 753B00     532            mov alarm_am_pm, #0x0
-04BB C0E0       533            push acc
-04BD 740D       533            mov a, #13
-04BF 14         533            dec a
-04C0 1200C5     533            lcall ?Set_Cursor_2 ; Select column and row
-04C3 D0E0       533            pop acc
-04C5 C0E0       534            push acc
-04C7 7441       534            mov a, #'A'
-04C9 12007D     534            lcall ?WriteData
-04CC D0E0       534            pop acc
-04CE            535            ;sjmp check_set
-04CE            536            
-04CE            537   check_alarm_set:
-04CE            538            
-04CE E53B       539            mov a, alarm_am_pm
-04D0 7015       540            jnz set_pm
-04D2            541            
-04D2            542   set_am:  
-04D2 C0E0       543            push acc
-04D4 740D       543            mov a, #13
-04D6 14         543            dec a
-04D7 1200C5     543            lcall ?Set_Cursor_2 ; Select column and row
-04DA D0E0       543            pop acc
-04DC C0E0       544            push acc
-04DE 7441       544            mov a, #'A'
-04E0 12007D     544            lcall ?WriteData
-04E3 D0E0       544            pop acc
-04E5 8013       545            sjmp display
-04E7            546            
-04E7            547   set_pm:
-04E7 C0E0       548            push acc
-04E9 740D       548            mov a, #13
-04EB 14         548            dec a
-04EC 1200C5     548            lcall ?Set_Cursor_2 ; Select column and row
-04EF D0E0       548            pop acc
-04F1 C0E0       549            push acc
-04F3 7450       549            mov a, #'P'
-04F5 12007D     549            lcall ?WriteData
-04F8 D0E0       549            pop acc
-04FA            550            
-04FA            551            
-04FA            552   display:
-04FA C0E0       553            push acc
-04FC 740D       553            mov a, #13
-04FE 14         553            dec a
-04FF 1200C7     553            lcall ?Set_Cursor_1 ; Select column and row
-0502 D0E0       553            pop acc     ; the place in the LCD where we want the BCD counter value
-0504 C000       554            push ar0
-0506 A832       554            mov r0, BCD_counter
-0508 1200CC     554            lcall ?Display_BCD
-050B D000       554            pop ar0 ; This macro is also in 'LCD_4bit.inc'
-050D            555            
-050D C0E0       556            push acc
-050F 740A       556            mov a, #10
-0511 14         556            dec a
-0512 1200C7     556            lcall ?Set_Cursor_1 ; Select column and row
-0515 D0E0       556            pop acc
-0517 C000       557            push ar0
-0519 A833       557            mov r0, BCD_counter1
-051B 1200CC     557            lcall ?Display_BCD
-051E D000       557            pop ar0
-0520            558            
-0520 C0E0       559            push acc
-0522 7407       559            mov a, #7
-0524 14         559            dec a
-0525 1200C7     559            lcall ?Set_Cursor_1 ; Select column and row
-0528 D0E0       559            pop acc
-052A C000       560            push ar0
-052C A834       560            mov r0, BCD_counter2
-052E 1200CC     560            lcall ?Display_BCD
-0531 D000       560            pop ar0
-0533            561            
-0533 C0E0       562            push acc
-0535 740A       562            mov a, #10
-0537 14         562            dec a
-0538 1200C5     562            lcall ?Set_Cursor_2 ; Select column and row
-053B D0E0       562            pop acc
-053D C000       563            push ar0
-053F A838       563            mov r0, BCD_alarm_min
-0541 1200CC     563            lcall ?Display_BCD
-0544 D000       563            pop ar0
-0546            564            
-0546 C0E0       565            push acc
-0548 7407       565            mov a, #7
-054A 14         565            dec a
-054B 1200C5     565            lcall ?Set_Cursor_2 ; Select column and row
-054E D0E0       565            pop acc
-0550 C000       566            push ar0
-0552 A839       566            mov r0, BCD_alarm_hour
-0554 1200CC     566            lcall ?Display_BCD
-0557 D000       566            pop ar0
-0559            567   
-0559            568   check_the_alarm:
-0559            569            ;check if AM/PM the same: R2 stores alarm, R1 stores clk
-0559            570            ;check if hours the same
-0559 209252     571            jb SET_IT, check_if_alarm_set  ; if the 'CLEAR' button is not pressed skip
-055C C002       572            push AR2
-055E 7A64       572            mov R2, #100
-0560 120038     572            lcall ?Wait_Milli_Seconds
-0563 D002       572            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-0565 209246     573            jb SET_IT, check_if_alarm_set
-0568            574            
-0568 EB         575            mov a, R3 ;checking whether alarm is set
-0569 B40122     576            cjne a, #1, set_alarm_on
-056C            577                    
-056C            578   turn_alarm_off:
-056C E4         579            clr a
-056D 7400       580            mov a, #0x00
-056F FB         581            mov R3, a
-0570            582            
-0570 C0E0       583            push acc
-0572 7401       583            mov a, #1
-0574 14         583            dec a
-0575 1200C5     583            lcall ?Set_Cursor_2 ; Select column and row
-0578 D0E0       583            pop acc
-057A C083       584            push dph
-057C C082       584            push dpl
-057E C0E0       584            push acc
-0580 900115     584            mov dptr, #Alarm_Off
-0583 1200BA     584            lcall ?Send_Constant_String
-0586 D0E0       584            pop acc
-0588 D082       584            pop dpl
-058A D083       584            pop dph
-058C 8020       585            sjmp check_if_alarm_set
-058E            586            
-058E            587   set_alarm_on:
-058E E4         588            clr a
-058F 7401       589            mov a, #0x01
-0591 FB         590            mov R3, a
-0592            591            
-0592 C0E0       592            push acc
-0594 7401       592            mov a, #1
-0596 14         592            dec a
-0597 1200C5     592            lcall ?Set_Cursor_2 ; Select column and row
-059A D0E0       592            pop acc
-059C C083       593            push dph
-059E C082       593            push dpl
-05A0 C0E0       593            push acc
-05A2 900104     593            mov dptr, #Alarm_On
-05A5 1200BA     593            lcall ?Send_Constant_String
-05A8 D0E0       593            pop acc
-05AA D082       593            pop dpl
-05AC D083       593            pop dph         
-05AE            594   
-05AE            595   
-05AE            596   check_if_alarm_set:
-05AE EB         597            mov a, R3
-05AF B4012A     598            cjne a, #0x01, no_alarm
-05B2            599                    
-05B2            600   comp_am_pm: ;whether alarm am and pm are the same as the clock's
-05B2 E53A       601            mov a, clk_am_pm
-05B4 953B       602            subb a, alarm_am_pm
-05B6 D4         603            da a 
-05B7 B40022     604            cjne a, #0x00, no_alarm
-05BA            605            
-05BA E53B       606            mov a, alarm_am_pm
-05BC 953A       607            subb a, clk_am_pm
-05BE D4         608            da a 
-05BF B4001A     609            cjne a, #0x00, no_alarm
-05C2            610   
-05C2            611   comp_hour:;whether alarm's hours are the same as the clock's
-05C2 E534       612            mov a, BCD_counter2
-05C4 9539       613            subb a, BCD_alarm_hour
-05C6 D4         614            da a 
-05C7 B40012     615            cjne a, #0x00, no_alarm
-05CA            616            
-05CA E539       617            mov a, BCD_alarm_hour
-05CC 9534       618            subb a, BCD_counter2
-05CE D4         619            da a 
-05CF B4000A     620            cjne a, #0x00, no_alarm
-05D2            621   
-05D2            622   comp_min:;whether alarm's minutes are the same as the clock's
-05D2 E533       623            mov a, BCD_counter1
-05D4 9538       624            subb a, BCD_alarm_min
-05D6 D4         625            da a 
-05D7 B40002     626            cjne a, #0x00, no_alarm
-05DA 8003       627            sjmp sound_the_alarm
-05DC            628                    
-05DC            629   no_alarm:
-05DC 02086B     630            ljmp loop_a ;skip the alarm sequence
-05DF            631            
-05DF            632            
-05DF            633   sound_the_alarm:
-05DF BB01FA     634            cjne R3, #0x01, no_alarm ;safety measure to ensure alarm does not go off incorrectly
-05E2 753C00     635            mov alarm_ans, #0x00
-05E5            636            
-05E5 D2A9       637            setb ET0  ; Enable timer 0 interrupt, timer zero interrupt sounds the alarm
-05E7            638   
-05E7            639            ;check which message should be displayed
-05E7 E53D       640            mov a, q_count
-05E9 B4003B     641            cjne a, #0x00, question_1_disp
-05EC            642            
-05EC            643   question_0_disp:
-05EC C0E0       644            push acc
-05EE 7401       644            mov a, #1
-05F0 14         644            dec a
-05F1 1200C7     644            lcall ?Set_Cursor_1 ; Select column and row
-05F4 D0E0       644            pop acc
-05F6 C083       645            push dph
-05F8 C082       645            push dpl
-05FA C0E0       645            push acc
-05FC 90012A     645            mov dptr, #ALARM_1
-05FF 1200BA     645            lcall ?Send_Constant_String
-0602 D0E0       645            pop acc
-0604 D082       645            pop dpl
-0606 D083       645            pop dph
-0608 C0E0       646            push acc
-060A 7401       646            mov a, #1
-060C 14         646            dec a
-060D 1200C5     646            lcall ?Set_Cursor_2 ; Select column and row
-0610 D0E0       646            pop acc
-0612 C083       647            push dph
-0614 C082       647            push dpl
-0616 C0E0       647            push acc
-0618 90013C     647            mov dptr, #ALARM_2
-061B 1200BA     647            lcall ?Send_Constant_String
-061E D0E0       647            pop acc
-0620 D082       647            pop dpl
-0622 D083       647            pop dph
-0624 02073D     648            ljmp check_ans_button
-0627            649            
-0627            650   question_1_disp:
-0627 B4013B     651            cjne a, #0x01, question_2_disp
-062A C0E0       652            push acc
-062C 7401       652            mov a, #1
-062E 14         652            dec a
-062F 1200C7     652            lcall ?Set_Cursor_1 ; Select column and row
-0632 D0E0       652            pop acc
-0634 C083       653            push dph
-0636 C082       653            push dpl
-0638 C0E0       653            push acc
-063A 900176     653            mov dptr, #ALARM_3
-063D 1200BA     653            lcall ?Send_Constant_String
-0640 D0E0       653            pop acc
-0642 D082       653            pop dpl
-0644 D083       653            pop dph
-0646 C0E0       654            push acc
-0648 7401       654            mov a, #1
-064A 14         654            dec a
-064B 1200C5     654            lcall ?Set_Cursor_2 ; Select column and row
-064E D0E0       654            pop acc
-0650 C083       655            push dph
-0652 C082       655            push dpl
-0654 C0E0       655            push acc
-0656 900187     655            mov dptr, #ALARM_4
-0659 1200BA     655            lcall ?Send_Constant_String
-065C D0E0       655            pop acc
-065E D082       655            pop dpl
-0660 D083       655            pop dph
-0662 02073D     656            ljmp check_ans_button
-0665            657            
-0665            658   question_2_disp:
-0665 C0E0       659            push acc
-0667 7401       659            mov a, #1
-0669 14         659            dec a
-066A 1200C7     659            lcall ?Set_Cursor_1 ; Select column and row
-066D D0E0       659            pop acc
-066F C083       660            push dph
-0671 C082       660            push dpl
-0673 C0E0       660            push acc
-0675 900198     660            mov dptr, #ALARM_5
-0678 1200BA     660            lcall ?Send_Constant_String
-067B D0E0       660            pop acc
-067D D082       660            pop dpl
-067F D083       660            pop dph
-0681 C0E0       661            push acc
-0683 7401       661            mov a, #1
-0685 14         661            dec a
-0686 1200C5     661            lcall ?Set_Cursor_2 ; Select column and row
-0689 D0E0       661            pop acc
-068B C083       662            push dph
-068D C082       662            push dpl
-068F C0E0       662            push acc
-0691 9001A9     662            mov dptr, #ALARM_6
-0694 1200BA     662            lcall ?Send_Constant_String
-0697 D0E0       662            pop acc
-0699 D082       662            pop dpl
-069B D083       662            pop dph
-069D 02073D     663            ljmp check_ans_button           
-06A0            664            
-06A0            665   fail_message:
-06A0 C0E0       666            push acc
-06A2 7401       666            mov a, #1
-06A4 14         666            dec a
-06A5 1200C7     666            lcall ?Set_Cursor_1 ; Select column and row
-06A8 D0E0       666            pop acc
-06AA C083       667            push dph
-06AC C082       667            push dpl
-06AE C0E0       667            push acc
-06B0 900150     667            mov dptr, #FAIL_1
-06B3 1200BA     667            lcall ?Send_Constant_String
-06B6 D0E0       667            pop acc
-06B8 D082       667            pop dpl
-06BA D083       667            pop dph
-06BC C0E0       668            push acc
-06BE 7401       668            mov a, #1
-06C0 14         668            dec a
-06C1 1200C5     668            lcall ?Set_Cursor_2 ; Select column and row
-06C4 D0E0       668            pop acc
-06C6 C083       669            push dph
-06C8 C082       669            push dpl
-06CA C0E0       669            push acc
-06CC 900163     669            mov dptr, #FAIL_2
-06CF 1200BA     669            lcall ?Send_Constant_String
-06D2 D0E0       669            pop acc
-06D4 D082       669            pop dpl
-06D6 D083       669            pop dph
-06D8 C002       670            push AR2
-06DA 7AC8       670            mov R2, #200
-06DC 120038     670            lcall ?Wait_Milli_Seconds
-06DF D002       670            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'                 
-06E1 C002       671            push AR2
-06E3 7AC8       671            mov R2, #200
-06E5 120038     671            lcall ?Wait_Milli_Seconds
-06E8 D002       671            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-06EA C002       672            push AR2
-06EC 7AC8       672            mov R2, #200
-06EE 120038     672            lcall ?Wait_Milli_Seconds
-06F1 D002       672            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-06F3 C002       673            push AR2
-06F5 7AC8       673            mov R2, #200
-06F7 120038     673            lcall ?Wait_Milli_Seconds
-06FA D002       673            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-06FC C002       674            push AR2
-06FE 7AC8       674            mov R2, #200
-0700 120038     674            lcall ?Wait_Milli_Seconds
-0703 D002       674            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-0705 C0E0       675            push acc
-0707 7401       675            mov a, #1
-0709 14         675            dec a
-070A 1200C7     675            lcall ?Set_Cursor_1 ; Select column and row
-070D D0E0       675            pop acc
-070F C083       676            push dph
-0711 C082       676            push dpl
-0713 C0E0       676            push acc
-0715 90012A     676            mov dptr, #ALARM_1
-0718 1200BA     676            lcall ?Send_Constant_String
-071B D0E0       676            pop acc
-071D D082       676            pop dpl
-071F D083       676            pop dph
-0721 C0E0       677            push acc
-0723 7401       677            mov a, #1
-0725 14         677            dec a
-0726 1200C5     677            lcall ?Set_Cursor_2 ; Select column and row
-0729 D0E0       677            pop acc
-072B C083       678            push dph
-072D C082       678            push dpl
-072F C0E0       678            push acc
-0731 90013C     678            mov dptr, #ALARM_2
-0734 1200BA     678            lcall ?Send_Constant_String
-0737 D0E0       678            pop acc
-0739 D082       678            pop dpl
-073B D083       678            pop dph
-073D            679            
-073D            680   check_ans_button:
-073D            681            
-073D C0E0       682            push acc
-073F 740F       682            mov a, #15
-0741 14         682            dec a
-0742 1200C5     682            lcall ?Set_Cursor_2 ; Select column and row
-0745 D0E0       682            pop acc
-0747 C000       683            push ar0
-0749 A83C       683            mov r0, alarm_ans
-074B 1200CC     683            lcall ?Display_BCD
-074E D000       683            pop ar0
-0750            684            
-0750 209024     685            jb SEC_BUTTON, check_ans ; if the 'CLEAR' button is not pressed skip
-0753 C002       686            push AR2
-0755 7A64       686            mov R2, #100
-0757 120038     686            lcall ?Wait_Milli_Seconds
-075A D002       686            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-075C 209018     687            jb SEC_BUTTON, check_ans ; if the 'CLEAR' button is not pressed skip
-075F            688            
-075F E53C       689            mov a, alarm_ans ;incrementing the minutes
-0761 2401       690            add a, #0x01
-0763 D4         691            da a
-0764            692            
-0764 B41006     693            cjne a, #0x10, no_o_flow_ans  ;making it clr if minutes too high
-0767 E4         694            clr a
-0768 7400       695            mov a, #0x00
-076A D4         696            da a
-076B F53C       697            mov alarm_ans, a
-076D            698            
-076D            699            
-076D            700   no_o_flow_ans:
-076D F53C       701            mov alarm_ans, a
-076F 8006       702            sjmp check_ans
-0771            703            
-0771            704   check_ans_button_extend:
-0771 02073D     705            ljmp check_ans_button
-0774            706   
-0774            707   fail_message_extend: ;can't reach
-0774 0206A0     708            ljmp fail_message
-0777            709   
-0777            710   check_ans:
-0777            711            ;using the set_button
-0777 2092F7     712            jb SET_IT, check_ans_button_extend ; if the 'SET_IT' button is not pressed skip
-077A C002       713            push AR2
-077C 7A64       713            mov R2, #100
-077E 120038     713            lcall ?Wait_Milli_Seconds
-0781 D002       713            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
-0783 2092EB     714            jb SET_IT, check_ans_button_extend ; if the 'SET_IT' button is not pressed skip         
-0786            715            
-0786            716            ;if answer is right continue
-0786 E53D       717            mov a, q_count
-0788 B40016     718            cjne a, #0x00, question_1_check
-078B            719            
-078B            720   question_0_check: ;want answer 8         
-078B E53C       721            mov a, alarm_ans
-078D 9408       722            subb a, #0x08
-078F D4         723            da a 
-0790 B400E1     724            cjne a, #0x00, fail_message_extend
-0793 7408       725            mov a, #0x08
-0795            726            
-0795 953C       727            subb a, alarm_ans
-0797 D4         728            da a 
-0798 B400D9     729            cjne a, #0x00, fail_message_extend
-079B 753D01     730            mov q_count, #0x01
-079E 0207D0     731            ljmp question_passed
-07A1            732            
-07A1            733   question_1_check:
-07A1 B40116     734            cjne a, #0x01, question_2_check
-07A4 E53C       735            mov a, alarm_ans
-07A6 9406       736            subb a, #0x06
-07A8 D4         737            da a 
-07A9 B400C8     738            cjne a, #0x00, fail_message_extend
-07AC 7406       739            mov a, #0x06
-07AE            740            
-07AE 953C       741            subb a, alarm_ans
-07B0 D4         742            da a 
-07B1 B400C0     743            cjne a, #0x00, fail_message_extend
-07B4 753D02     744            mov q_count, #0x02
-07B7 0207D0     745            ljmp question_passed
-07BA            746            
-07BA            747   question_2_check:
-07BA E53C       748            mov a, alarm_ans
-07BC 9407       749            subb a, #0x07
-07BE D4         750            da a 
-07BF B400B2     751            cjne a, #0x00, fail_message_extend
-07C2 7407       752            mov a, #0x07
-07C4            753            
-07C4 953C       754            subb a, alarm_ans
-07C6 D4         755            da a 
-07C7 B400AA     756            cjne a, #0x00, fail_message_extend
-07CA 753D00     757            mov q_count, #0x00
-07CD 0207D0     758            ljmp question_passed
-07D0            759            
-07D0            760   question_passed:         
-07D0 7B00       761            mov R3, #0x00
-07D2 C2A9       762            clr ET0  ; Enable timer 0 interrupt
-07D4            763            
-07D4 C0E0       764            push acc
-07D6 7401       764            mov a, #1
-07D8 14         764            dec a
-07D9 1200C7     764            lcall ?Set_Cursor_1 ; Select column and row
-07DC D0E0       764            pop acc
-07DE C083       765            push dph
-07E0 C082       765            push dpl
-07E2 C0E0       765            push acc
-07E4 9000E2     765            mov dptr, #Initial_Message
-07E7 1200BA     765            lcall ?Send_Constant_String
-07EA D0E0       765            pop acc
-07EC D082       765            pop dpl
-07EE D083       765            pop dph
-07F0            766       
-07F0 C0E0       767            push acc
-07F2 7401       767            mov a, #1
-07F4 14         767            dec a
-07F5 1200C5     767            lcall ?Set_Cursor_2 ; Select column and row
-07F8 D0E0       767            pop acc
-07FA C083       768            push dph
-07FC C082       768            push dpl
-07FE C0E0       768            push acc
-0800 9000F3     768            mov dptr, #Initial_Message2
-0803 1200BA     768            lcall ?Send_Constant_String
-0806 D0E0       768            pop acc
-0808 D082       768            pop dpl
-080A D083       768            pop dph         
-080C            769       
-080C C0E0       770            push acc
-080E 740D       770            mov a, #13
-0810 14         770            dec a
-0811 1200C7     770            lcall ?Set_Cursor_1 ; Select column and row
-0814 D0E0       770            pop acc     ; the place in the LCD where we want the BCD counter value
-0816 C000       771            push ar0
-0818 A832       771            mov r0, BCD_counter
-081A 1200CC     771            lcall ?Display_BCD
-081D D000       771            pop ar0 ; This macro is also in 'LCD_4bit.inc'
-081F            772            
-081F C0E0       773            push acc
-0821 740A       773            mov a, #10
-0823 14         773            dec a
-0824 1200C7     773            lcall ?Set_Cursor_1 ; Select column and row
-0827 D0E0       773            pop acc
-0829 C000       774            push ar0
-082B A833       774            mov r0, BCD_counter1
-082D 1200CC     774            lcall ?Display_BCD
-0830 D000       774            pop ar0
-0832            775            
-0832 C0E0       776            push acc
-0834 7407       776            mov a, #7
-0836 14         776            dec a
-0837 1200C7     776            lcall ?Set_Cursor_1 ; Select column and row
-083A D0E0       776            pop acc
-083C C000       777            push ar0
-083E A834       777            mov r0, BCD_counter2
-0840 1200CC     777            lcall ?Display_BCD
-0843 D000       777            pop ar0
-0845            778            
-0845 C0E0       779            push acc
-0847 740A       779            mov a, #10
-0849 14         779            dec a
-084A 1200C5     779            lcall ?Set_Cursor_2 ; Select column and row
-084D D0E0       779            pop acc
-084F C000       780            push ar0
-0851 A838       780            mov r0, BCD_alarm_min
-0853 1200CC     780            lcall ?Display_BCD
-0856 D000       780            pop ar0
-0858            781            
-0858 C0E0       782            push acc
-085A 7407       782            mov a, #7
-085C 14         782            dec a
-085D 1200C5     782            lcall ?Set_Cursor_2 ; Select column and row
-0860 D0E0       782            pop acc
-0862 C000       783            push ar0
-0864 A839       783            mov r0, BCD_alarm_hour
-0866 1200CC     783            lcall ?Display_BCD
-0869 D000       783            pop ar0
-086B            784   
-086B            785   loop_a:
-086B            786   
-086B 300002     787            jnb half_seconds_flag, loop_extend
-086E 8003       788            sjmp loop_b
-0870            789            
-0870            790            
-0870            791   loop_extend:
-0870 0203FB     792            ljmp loop
-0873            793   loop_b:
-0873 C200       794            clr half_seconds_flag 
-0875 0203FB     795       ljmp loop
-0878            796   END
+0271            305   Timer2_ISR_done:
+0271 D0D0       306            pop psw
+0273 D0E0       307            pop acc
+0275 32         308            reti
+0276            309   
+0276            310   
+0276            311   ;---------------------------------;
+0276            312   ; Main program. Includes hardware ;
+0276            313   ; initialization and 'forever'    ;
+0276            314   ; loop.                           ;
+0276            315   ;---------------------------------;
+0276            316   main:
+0276            317            ; Initialization
+0276 75817F     318       mov SP, #0x7F
+0279 75B100     319       mov P0M1, #0x00
+027C 75B200     320       mov P0M2, #0x00
+027F 75B300     321       mov P1M1, #0x00
+0282 75B400     322       mov P1M2, #0x00
+0285 75AD00     323       mov P3M2, #0x00
+0288 75AD00     324       mov P3M2, #0x00
+028B            325             
+028B 1201BA     326       lcall Timer0_Init
+028E 1201DB     327       lcall Timer2_Init
+0291 D2AF       328       setb EA   ; Enable Global interrupts
+0293 120087     329       lcall LCD_4BIT
+0296            330       ; For convenience a few handy macros are included in 'LCD_4bit.inc':
+0296 C0E0       331            push acc
+0298 7401       331            mov a, #1
+029A 14         331            dec a
+029B 1200C7     331            lcall ?Set_Cursor_1 ; Select column and row
+029E D0E0       331            pop acc
+02A0 C083       332            push dph
+02A2 C082       332            push dpl
+02A4 C0E0       332            push acc
+02A6 9000E2     332            mov dptr, #Initial_Message
+02A9 1200BA     332            lcall ?Send_Constant_String
+02AC D0E0       332            pop acc
+02AE D082       332            pop dpl
+02B0 D083       332            pop dph
+02B2            333       
+02B2 C0E0       334            push acc
+02B4 7401       334            mov a, #1
+02B6 14         334            dec a
+02B7 1200C5     334            lcall ?Set_Cursor_2 ; Select column and row
+02BA D0E0       334            pop acc
+02BC C083       335            push dph
+02BE C082       335            push dpl
+02C0 C0E0       335            push acc
+02C2 9000F3     335            mov dptr, #Initial_Message2
+02C5 1200BA     335            lcall ?Send_Constant_String
+02C8 D0E0       335            pop acc
+02CA D082       335            pop dpl
+02CC D083       335            pop dph
+02CE            336       
+02CE D200       337       setb half_seconds_flag
+02D0 753500     338            mov BCD_counter_temp, #0x00
+02D3 753600     339            mov BCD_counter1_temp, #0x00
+02D6 753701     340            mov BCD_counter2_temp, #0x01
+02D9            341   
+02D9 753800     342            mov BCD_alarm_min, #0x00
+02DC 753901     343            mov BCD_alarm_hour, #0x01
+02DF            344            
+02DF 753B00     345            mov alarm_am_pm, #0x00
+02E2 753A00     346            mov clk_am_pm, #0x00
+02E5 753D00     347            mov q_count, #0x00
+02E8 7B00       348            mov R3, #0x00
+02EA 7C00       349            mov R4, #0x00
+02EC            350            
+02EC            351   setting_time: ;this is where all the clock times are set
+02EC            352            
+02EC            353   check_hour:      
+02EC C0E0       354            push acc
+02EE 7407       354            mov a, #7
+02F0 14         354            dec a
+02F1 1200C7     354            lcall ?Set_Cursor_1 ; Select column and row
+02F4 D0E0       354            pop acc
+02F6 C000       355            push ar0
+02F8 A837       355            mov r0, BCD_counter2_temp
+02FA 1200CC     355            lcall ?Display_BCD
+02FD D000       355            pop ar0
+02FF            356            
+02FF 20961E     357            jb HR_BUTTON, check_mins  ; if the 'CLEAR' button is not pressed skip
+0302 C002       358            push AR2
+0304 7A64       358            mov R2, #100
+0306 120038     358            lcall ?Wait_Milli_Seconds
+0309 D002       358            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+030B 209612     359            jb HR_BUTTON, check_mins ; if the 'CLEAR' button is not pressed skip
+030E            360            
+030E E537       361            mov a, BCD_counter2_temp ;incrementing the minutes
+0310 2401       362            add a, #0x01
+0312 D4         363            da a
+0313            364            
+0313 B41308     365            cjne a, #0x13, no_o_flow_hr  ;making it clr if hour too high
+0316 E4         366            clr a
+0317 7401       367            mov a, #0x01
+0319 D4         368            da a
+031A F537       369            mov BCD_counter2_temp, a
+031C            370            
+031C 8002       371            sjmp check_mins
+031E            372            ;need to deal with overflow
+031E            373   no_o_flow_hr:
+031E F537       374            mov BCD_counter2_temp, a
+0320            375   
+0320            376   check_mins:      
+0320 C0E0       377            push acc
+0322 740A       377            mov a, #10
+0324 14         377            dec a
+0325 1200C7     377            lcall ?Set_Cursor_1 ; Select column and row
+0328 D0E0       377            pop acc
+032A C000       378            push ar0
+032C A836       378            mov r0, BCD_counter1_temp
+032E 1200CC     378            lcall ?Display_BCD
+0331 D000       378            pop ar0
+0333            379            
+0333 20951C     380            jb MIN_BUTTON, check_secs  ; if the 'CLEAR' button is not pressed skip
+0336 C002       381            push AR2
+0338 7A64       381            mov R2, #100
+033A 120038     381            lcall ?Wait_Milli_Seconds
+033D D002       381            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+033F 209510     382            jb MIN_BUTTON, check_secs ; if the 'CLEAR' button is not pressed skip
+0342            383            
+0342 E536       384            mov a, BCD_counter1_temp ;incrementing the minutes
+0344 2401       385            add a, #0x01
+0346 D4         386            da a
+0347            387            
+0347 B46006     388            cjne a, #0x60, no_o_flow_min  ;making it clr if minutes too high
+034A E4         389            clr a
+034B 7400       390            mov a, #0x00
+034D D4         391            da a
+034E F536       392            mov BCD_counter1_temp, a
+0350            393            
+0350            394   no_o_flow_min:
+0350 F536       395            mov BCD_counter1_temp, a
+0352            396            
+0352            397   check_secs:      
+0352 C0E0       398            push acc
+0354 740D       398            mov a, #13
+0356 14         398            dec a
+0357 1200C7     398            lcall ?Set_Cursor_1 ; Select column and row
+035A D0E0       398            pop acc
+035C C000       399            push ar0
+035E A835       399            mov r0, BCD_counter_temp
+0360 1200CC     399            lcall ?Display_BCD
+0363 D000       399            pop ar0
+0365            400            
+0365 20901C     401            jb SEC_BUTTON, check_am_pm  ; if the 'CLEAR' button is not pressed skip
+0368 C002       402            push AR2
+036A 7A64       402            mov R2, #100
+036C 120038     402            lcall ?Wait_Milli_Seconds
+036F D002       402            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+0371 209010     403            jb SEC_BUTTON, check_am_pm ; if the 'CLEAR' button is not pressed skip
+0374            404            
+0374 E535       405            mov a, BCD_counter_temp ;incrementing the minutes
+0376 2401       406            add a, #0x01
+0378 D4         407            da a
+0379            408            
+0379 B46006     409            cjne a, #0x60, no_o_flow_sec  ;making it clr if minutes too high
+037C E4         410            clr a
+037D 7400       411            mov a, #0x00
+037F D4         412            da a
+0380 F535       413            mov BCD_counter_temp, a
+0382            414            
+0382            415   no_o_flow_sec:
+0382 F535       416            mov BCD_counter_temp, a
+0384            417            
+0384            418   check_am_pm:
+0384 209143     419            jb AM_PM, check_set  ; if the 'CLEAR' button is not pressed skip
+0387 C002       420            push AR2
+0389 7A96       420            mov R2, #150
+038B 120038     420            lcall ?Wait_Milli_Seconds
+038E D002       420            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+0390 209137     421            jb AM_PM, check_set ; if the 'CLEAR' button is not pressed skip
+0393            422            
+0393            423            ;have R1 be whether the clk is AM or PM
+0393            424            ;if R1 is 0 it is AM, if its 1 its PM
+0393 E53A       425            mov a, clk_am_pm
+0395 701B       426            jnz change_to_am
+0397            427            
+0397            428   change_to_pm:
+0397 753A01     429            mov clk_am_pm, #0x01
+039A C0E0       430            push acc
+039C 7410       430            mov a, #16
+039E 14         430            dec a
+039F 1200C7     430            lcall ?Set_Cursor_1 ; Select column and row
+03A2 D0E0       430            pop acc
+03A4 C0E0       431            push acc
+03A6 7450       431            mov a, #'P'
+03A8 12007D     431            lcall ?WriteData
+03AB D0E0       431            pop acc                 
+03AD 801B       432            sjmp check_set
+03AF            433            
+03AF            434   jump_extend: ;extending the jump to setting time
+03AF 0202EC     435            ljmp setting_time       
+03B2            436            
+03B2            437   change_to_am:
+03B2 753A00     438            mov clk_am_pm, #0x0
+03B5 C0E0       439            push acc
+03B7 7410       439            mov a, #16
+03B9 14         439            dec a
+03BA 1200C7     439            lcall ?Set_Cursor_1 ; Select column and row
+03BD D0E0       439            pop acc
+03BF C0E0       440            push acc
+03C1 7441       440            mov a, #'A'
+03C3 12007D     440            lcall ?WriteData
+03C6 D0E0       440            pop acc
+03C8 8000       441            sjmp check_set
+03CA            442            
+03CA            443   check_set:       
+03CA 2092E2     444            jb SET_IT, jump_extend  ; if the 'SET_IT' button is not pressed skip
+03CD C002       445            push AR2
+03CF 7A32       445            mov R2, #50
+03D1 120038     445            lcall ?Wait_Milli_Seconds
+03D4 D002       445            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+03D6 2092D6     446            jb SET_IT, jump_extend ; if the 'SET_IT' button is not pressed skip
+03D9            447            
+03D9 7B00       448            mov R3, #0
+03DB            449            
+03DB            450            ;moving the counters over to their real counterparts which are used by Timer 2
+03DB            451            ;the temp variables helped prevent the timer from increasing them as they were being entered
+03DB C0E0       452            push acc
+03DD 7401       452            mov a, #1
+03DF 14         452            dec a
+03E0 1200C5     452            lcall ?Set_Cursor_2 ; Select column and row
+03E3 D0E0       452            pop acc
+03E5 853532     453            mov BCD_Counter, BCD_Counter_temp
+03E8 853633     454            mov BCD_Counter1, BCD_Counter1_temp
+03EB 853734     455            mov BCD_Counter2, BCD_Counter2_temp
+03EE C083       456            push dph
+03F0 C082       456            push dpl
+03F2 C0E0       456            push acc
+03F4 900115     456            mov dptr, #Alarm_Off
+03F7 1200BA     456            lcall ?Send_Constant_String
+03FA D0E0       456            pop acc
+03FC D082       456            pop dpl
+03FE D083       456            pop dph;string to say alarm is in off mode
+0400            457            
+0400            458            ; After initialization the program stays in this 'forever' loop
+0400            459   loop:
+0400            460                    
+0400            461       
+0400            462   check_clk_am_set:
+0400 E53A       463            mov a, clk_am_pm
+0402 7015       464            jnz set_clk_pm
+0404            465            
+0404            466   set_clk_am:      
+0404 C0E0       467            push acc
+0406 7410       467            mov a, #16
+0408 14         467            dec a
+0409 1200C7     467            lcall ?Set_Cursor_1 ; Select column and row
+040C D0E0       467            pop acc
+040E C0E0       468            push acc
+0410 7441       468            mov a, #'A'
+0412 12007D     468            lcall ?WriteData
+0415 D0E0       468            pop acc
+0417 8013       469            sjmp check_alarm_hour
+0419            470            
+0419            471   set_clk_pm:
+0419 C0E0       472            push acc
+041B 7410       472            mov a, #16
+041D 14         472            dec a
+041E 1200C7     472            lcall ?Set_Cursor_1 ; Select column and row
+0421 D0E0       472            pop acc
+0423 C0E0       473            push acc
+0425 7450       473            mov a, #'P'
+0427 12007D     473            lcall ?WriteData
+042A D0E0       473            pop acc
+042C            474            
+042C            475   
+042C            476   check_alarm_hour:        
+042C C0E0       477            push acc
+042E 7407       477            mov a, #7
+0430 14         477            dec a
+0431 1200C5     477            lcall ?Set_Cursor_2 ; Select column and row
+0434 D0E0       477            pop acc
+0436 C000       478            push ar0
+0438 A839       478            mov r0, BCD_alarm_hour
+043A 1200CC     478            lcall ?Display_BCD
+043D D000       478            pop ar0
+043F            479            
+043F 20961E     480            jb HR_BUTTON, check_alarm_mins  ; if the 'CLEAR' button is not pressed skip
+0442 C002       481            push AR2
+0444 7A64       481            mov R2, #100
+0446 120038     481            lcall ?Wait_Milli_Seconds
+0449 D002       481            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+044B 209612     482            jb HR_BUTTON, check_alarm_mins ; if the 'CLEAR' button is not pressed skip
+044E            483            
+044E E539       484            mov a, BCD_alarm_hour ;incrementing the minutes
+0450 2401       485            add a, #0x01
+0452 D4         486            da a
+0453            487            
+0453 B41308     488            cjne a, #0x13, no_o_flow_alarm_hr  ;making it clr if hour too high
+0456 E4         489            clr a
+0457 7401       490            mov a, #0x01
+0459 D4         491            da a
+045A F539       492            mov BCD_alarm_hour, a
+045C            493            
+045C 8002       494            sjmp check_alarm_mins
+045E            495            ;need to deal with overflow
+045E            496   no_o_flow_alarm_hr:
+045E F539       497            mov BCD_alarm_hour, a
+0460            498   
+0460            499   check_alarm_mins:        
+0460 C0E0       500            push acc
+0462 740A       500            mov a, #10
+0464 14         500            dec a
+0465 1200C5     500            lcall ?Set_Cursor_2 ; Select column and row
+0468 D0E0       500            pop acc
+046A C000       501            push ar0
+046C A838       501            mov r0, BCD_alarm_min
+046E 1200CC     501            lcall ?Display_BCD
+0471 D000       501            pop ar0
+0473            502            
+0473 20951C     503            jb MIN_BUTTON, check_alarm_am_pm  ; if the 'CLEAR' button is not pressed skip
+0476 C002       504            push AR2
+0478 7A64       504            mov R2, #100
+047A 120038     504            lcall ?Wait_Milli_Seconds
+047D D002       504            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+047F 209510     505            jb MIN_BUTTON, check_alarm_am_pm ; if the 'CLEAR' button is not pressed skip
+0482            506            
+0482 E538       507            mov a, BCD_alarm_min ;incrementing the minutes
+0484 2401       508            add a, #0x01
+0486 D4         509            da a
+0487            510            
+0487 B46006     511            cjne a, #0x60, no_o_flow_alarm_min  ;making it clr if minutes too high
+048A E4         512            clr a
+048B 7400       513            mov a, #0x00
+048D D4         514            da a
+048E F538       515            mov BCD_alarm_min, a
+0490            516            
+0490            517   no_o_flow_alarm_min:
+0490 F538       518            mov BCD_alarm_min, a
+0492            519            
+0492            520   check_alarm_am_pm:
+0492 20913E     521            jb AM_PM, check_alarm_set  ; if the 'CLEAR' button is not pressed skip
+0495 C002       522            push AR2
+0497 7AFA       522            mov R2, #250
+0499 120038     522            lcall ?Wait_Milli_Seconds
+049C D002       522            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+049E 209132     523            jb AM_PM, check_alarm_set ; if the 'CLEAR' button is not pressed skip
+04A1            524            
+04A1            525            ;have R1 be whether the clk is AM or PM
+04A1            526            ;if R1 is 0 it is AM, if its 1 its PM
+04A1 E53B       527            mov a, alarm_am_pm
+04A3 7018       528            jnz change_to_alarm_am
+04A5            529            
+04A5            530   change_to_alarm_pm:
+04A5 753B01     531            mov alarm_am_pm, #0x1
+04A8 C0E0       532            push acc
+04AA 740D       532            mov a, #13
+04AC 14         532            dec a
+04AD 1200C5     532            lcall ?Set_Cursor_2 ; Select column and row
+04B0 D0E0       532            pop acc
+04B2 C0E0       533            push acc
+04B4 7450       533            mov a, #'P'
+04B6 12007D     533            lcall ?WriteData
+04B9 D0E0       533            pop acc                 
+04BB 8016       534            sjmp check_alarm_set
+04BD            535   
+04BD            536            
+04BD            537   change_to_alarm_am:
+04BD 753B00     538            mov alarm_am_pm, #0x0
+04C0 C0E0       539            push acc
+04C2 740D       539            mov a, #13
+04C4 14         539            dec a
+04C5 1200C5     539            lcall ?Set_Cursor_2 ; Select column and row
+04C8 D0E0       539            pop acc
+04CA C0E0       540            push acc
+04CC 7441       540            mov a, #'A'
+04CE 12007D     540            lcall ?WriteData
+04D1 D0E0       540            pop acc
+04D3            541            ;sjmp check_set
+04D3            542            
+04D3            543   check_alarm_set:
+04D3            544            
+04D3 E53B       545            mov a, alarm_am_pm
+04D5 7015       546            jnz set_pm
+04D7            547            
+04D7            548   set_am:  
+04D7 C0E0       549            push acc
+04D9 740D       549            mov a, #13
+04DB 14         549            dec a
+04DC 1200C5     549            lcall ?Set_Cursor_2 ; Select column and row
+04DF D0E0       549            pop acc
+04E1 C0E0       550            push acc
+04E3 7441       550            mov a, #'A'
+04E5 12007D     550            lcall ?WriteData
+04E8 D0E0       550            pop acc
+04EA 8013       551            sjmp display
+04EC            552            
+04EC            553   set_pm:
+04EC C0E0       554            push acc
+04EE 740D       554            mov a, #13
+04F0 14         554            dec a
+04F1 1200C5     554            lcall ?Set_Cursor_2 ; Select column and row
+04F4 D0E0       554            pop acc
+04F6 C0E0       555            push acc
+04F8 7450       555            mov a, #'P'
+04FA 12007D     555            lcall ?WriteData
+04FD D0E0       555            pop acc
+04FF            556            
+04FF            557            
+04FF            558   display:
+04FF C0E0       559            push acc
+0501 740D       559            mov a, #13
+0503 14         559            dec a
+0504 1200C7     559            lcall ?Set_Cursor_1 ; Select column and row
+0507 D0E0       559            pop acc     ; the place in the LCD where we want the BCD counter value
+0509 C000       560            push ar0
+050B A832       560            mov r0, BCD_counter
+050D 1200CC     560            lcall ?Display_BCD
+0510 D000       560            pop ar0 ; This macro is also in 'LCD_4bit.inc'
+0512            561            
+0512 C0E0       562            push acc
+0514 740A       562            mov a, #10
+0516 14         562            dec a
+0517 1200C7     562            lcall ?Set_Cursor_1 ; Select column and row
+051A D0E0       562            pop acc
+051C C000       563            push ar0
+051E A833       563            mov r0, BCD_counter1
+0520 1200CC     563            lcall ?Display_BCD
+0523 D000       563            pop ar0
+0525            564            
+0525 C0E0       565            push acc
+0527 7407       565            mov a, #7
+0529 14         565            dec a
+052A 1200C7     565            lcall ?Set_Cursor_1 ; Select column and row
+052D D0E0       565            pop acc
+052F C000       566            push ar0
+0531 A834       566            mov r0, BCD_counter2
+0533 1200CC     566            lcall ?Display_BCD
+0536 D000       566            pop ar0
+0538            567            
+0538 C0E0       568            push acc
+053A 740A       568            mov a, #10
+053C 14         568            dec a
+053D 1200C5     568            lcall ?Set_Cursor_2 ; Select column and row
+0540 D0E0       568            pop acc
+0542 C000       569            push ar0
+0544 A838       569            mov r0, BCD_alarm_min
+0546 1200CC     569            lcall ?Display_BCD
+0549 D000       569            pop ar0
+054B            570            
+054B C0E0       571            push acc
+054D 7407       571            mov a, #7
+054F 14         571            dec a
+0550 1200C5     571            lcall ?Set_Cursor_2 ; Select column and row
+0553 D0E0       571            pop acc
+0555 C000       572            push ar0
+0557 A839       572            mov r0, BCD_alarm_hour
+0559 1200CC     572            lcall ?Display_BCD
+055C D000       572            pop ar0
+055E            573   
+055E            574   check_the_alarm:
+055E            575            ;check if AM/PM the same: R2 stores alarm, R1 stores clk
+055E            576            ;check if hours the same
+055E 209252     577            jb SET_IT, check_if_alarm_set  ; if the 'CLEAR' button is not pressed skip
+0561 C002       578            push AR2
+0563 7A64       578            mov R2, #100
+0565 120038     578            lcall ?Wait_Milli_Seconds
+0568 D002       578            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+056A 209246     579            jb SET_IT, check_if_alarm_set
+056D            580            
+056D EB         581            mov a, R3 ;checking whether alarm is set
+056E B40122     582            cjne a, #1, set_alarm_on
+0571            583                    
+0571            584   turn_alarm_off:
+0571 E4         585            clr a
+0572 7400       586            mov a, #0x00
+0574 FB         587            mov R3, a
+0575            588            
+0575 C0E0       589            push acc
+0577 7401       589            mov a, #1
+0579 14         589            dec a
+057A 1200C5     589            lcall ?Set_Cursor_2 ; Select column and row
+057D D0E0       589            pop acc
+057F C083       590            push dph
+0581 C082       590            push dpl
+0583 C0E0       590            push acc
+0585 900115     590            mov dptr, #Alarm_Off
+0588 1200BA     590            lcall ?Send_Constant_String
+058B D0E0       590            pop acc
+058D D082       590            pop dpl
+058F D083       590            pop dph
+0591 8020       591            sjmp check_if_alarm_set
+0593            592            
+0593            593   set_alarm_on:
+0593 E4         594            clr a
+0594 7401       595            mov a, #0x01
+0596 FB         596            mov R3, a
+0597            597            
+0597 C0E0       598            push acc
+0599 7401       598            mov a, #1
+059B 14         598            dec a
+059C 1200C5     598            lcall ?Set_Cursor_2 ; Select column and row
+059F D0E0       598            pop acc
+05A1 C083       599            push dph
+05A3 C082       599            push dpl
+05A5 C0E0       599            push acc
+05A7 900104     599            mov dptr, #Alarm_On
+05AA 1200BA     599            lcall ?Send_Constant_String
+05AD D0E0       599            pop acc
+05AF D082       599            pop dpl
+05B1 D083       599            pop dph         
+05B3            600   
+05B3            601   
+05B3            602   check_if_alarm_set:
+05B3 EB         603            mov a, R3
+05B4 B4012A     604            cjne a, #0x01, no_alarm
+05B7            605                    
+05B7            606   comp_am_pm: ;whether alarm am and pm are the same as the clock's
+05B7 E53A       607            mov a, clk_am_pm
+05B9 953B       608            subb a, alarm_am_pm
+05BB D4         609            da a 
+05BC B40022     610            cjne a, #0x00, no_alarm
+05BF            611            
+05BF E53B       612            mov a, alarm_am_pm
+05C1 953A       613            subb a, clk_am_pm
+05C3 D4         614            da a 
+05C4 B4001A     615            cjne a, #0x00, no_alarm
+05C7            616   
+05C7            617   comp_hour:;whether alarm's hours are the same as the clock's
+05C7 E534       618            mov a, BCD_counter2
+05C9 9539       619            subb a, BCD_alarm_hour
+05CB D4         620            da a 
+05CC B40012     621            cjne a, #0x00, no_alarm
+05CF            622            
+05CF E539       623            mov a, BCD_alarm_hour
+05D1 9534       624            subb a, BCD_counter2
+05D3 D4         625            da a 
+05D4 B4000A     626            cjne a, #0x00, no_alarm
+05D7            627   
+05D7            628   comp_min:;whether alarm's minutes are the same as the clock's
+05D7 E533       629            mov a, BCD_counter1
+05D9 9538       630            subb a, BCD_alarm_min
+05DB D4         631            da a 
+05DC B40002     632            cjne a, #0x00, no_alarm
+05DF 8003       633            sjmp sound_the_alarm
+05E1            634                    
+05E1            635   no_alarm:
+05E1 020870     636            ljmp loop_a ;skip the alarm sequence
+05E4            637            
+05E4            638            
+05E4            639   sound_the_alarm:
+05E4 BB01FA     640            cjne R3, #0x01, no_alarm ;safety measure to ensure alarm does not go off incorrectly
+05E7 753C00     641            mov alarm_ans, #0x00
+05EA            642            
+05EA D2A9       643            setb ET0  ; Enable timer 0 interrupt, timer zero interrupt sounds the alarm
+05EC            644   
+05EC            645            ;check which message should be displayed
+05EC E53D       646            mov a, q_count
+05EE B4003B     647            cjne a, #0x00, question_1_disp
+05F1            648            
+05F1            649   question_0_disp:
+05F1 C0E0       650            push acc
+05F3 7401       650            mov a, #1
+05F5 14         650            dec a
+05F6 1200C7     650            lcall ?Set_Cursor_1 ; Select column and row
+05F9 D0E0       650            pop acc
+05FB C083       651            push dph
+05FD C082       651            push dpl
+05FF C0E0       651            push acc
+0601 90012A     651            mov dptr, #ALARM_1
+0604 1200BA     651            lcall ?Send_Constant_String
+0607 D0E0       651            pop acc
+0609 D082       651            pop dpl
+060B D083       651            pop dph
+060D C0E0       652            push acc
+060F 7401       652            mov a, #1
+0611 14         652            dec a
+0612 1200C5     652            lcall ?Set_Cursor_2 ; Select column and row
+0615 D0E0       652            pop acc
+0617 C083       653            push dph
+0619 C082       653            push dpl
+061B C0E0       653            push acc
+061D 90013C     653            mov dptr, #ALARM_2
+0620 1200BA     653            lcall ?Send_Constant_String
+0623 D0E0       653            pop acc
+0625 D082       653            pop dpl
+0627 D083       653            pop dph
+0629 020742     654            ljmp check_ans_button
+062C            655            
+062C            656   question_1_disp:
+062C B4013B     657            cjne a, #0x01, question_2_disp
+062F C0E0       658            push acc
+0631 7401       658            mov a, #1
+0633 14         658            dec a
+0634 1200C7     658            lcall ?Set_Cursor_1 ; Select column and row
+0637 D0E0       658            pop acc
+0639 C083       659            push dph
+063B C082       659            push dpl
+063D C0E0       659            push acc
+063F 900176     659            mov dptr, #ALARM_3
+0642 1200BA     659            lcall ?Send_Constant_String
+0645 D0E0       659            pop acc
+0647 D082       659            pop dpl
+0649 D083       659            pop dph
+064B C0E0       660            push acc
+064D 7401       660            mov a, #1
+064F 14         660            dec a
+0650 1200C5     660            lcall ?Set_Cursor_2 ; Select column and row
+0653 D0E0       660            pop acc
+0655 C083       661            push dph
+0657 C082       661            push dpl
+0659 C0E0       661            push acc
+065B 900187     661            mov dptr, #ALARM_4
+065E 1200BA     661            lcall ?Send_Constant_String
+0661 D0E0       661            pop acc
+0663 D082       661            pop dpl
+0665 D083       661            pop dph
+0667 020742     662            ljmp check_ans_button
+066A            663            
+066A            664   question_2_disp:
+066A C0E0       665            push acc
+066C 7401       665            mov a, #1
+066E 14         665            dec a
+066F 1200C7     665            lcall ?Set_Cursor_1 ; Select column and row
+0672 D0E0       665            pop acc
+0674 C083       666            push dph
+0676 C082       666            push dpl
+0678 C0E0       666            push acc
+067A 900198     666            mov dptr, #ALARM_5
+067D 1200BA     666            lcall ?Send_Constant_String
+0680 D0E0       666            pop acc
+0682 D082       666            pop dpl
+0684 D083       666            pop dph
+0686 C0E0       667            push acc
+0688 7401       667            mov a, #1
+068A 14         667            dec a
+068B 1200C5     667            lcall ?Set_Cursor_2 ; Select column and row
+068E D0E0       667            pop acc
+0690 C083       668            push dph
+0692 C082       668            push dpl
+0694 C0E0       668            push acc
+0696 9001A9     668            mov dptr, #ALARM_6
+0699 1200BA     668            lcall ?Send_Constant_String
+069C D0E0       668            pop acc
+069E D082       668            pop dpl
+06A0 D083       668            pop dph
+06A2 020742     669            ljmp check_ans_button           
+06A5            670            
+06A5            671   fail_message:
+06A5 C0E0       672            push acc
+06A7 7401       672            mov a, #1
+06A9 14         672            dec a
+06AA 1200C7     672            lcall ?Set_Cursor_1 ; Select column and row
+06AD D0E0       672            pop acc
+06AF C083       673            push dph
+06B1 C082       673            push dpl
+06B3 C0E0       673            push acc
+06B5 900150     673            mov dptr, #FAIL_1
+06B8 1200BA     673            lcall ?Send_Constant_String
+06BB D0E0       673            pop acc
+06BD D082       673            pop dpl
+06BF D083       673            pop dph
+06C1 C0E0       674            push acc
+06C3 7401       674            mov a, #1
+06C5 14         674            dec a
+06C6 1200C5     674            lcall ?Set_Cursor_2 ; Select column and row
+06C9 D0E0       674            pop acc
+06CB C083       675            push dph
+06CD C082       675            push dpl
+06CF C0E0       675            push acc
+06D1 900163     675            mov dptr, #FAIL_2
+06D4 1200BA     675            lcall ?Send_Constant_String
+06D7 D0E0       675            pop acc
+06D9 D082       675            pop dpl
+06DB D083       675            pop dph
+06DD C002       676            push AR2
+06DF 7AC8       676            mov R2, #200
+06E1 120038     676            lcall ?Wait_Milli_Seconds
+06E4 D002       676            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'                 
+06E6 C002       677            push AR2
+06E8 7AC8       677            mov R2, #200
+06EA 120038     677            lcall ?Wait_Milli_Seconds
+06ED D002       677            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+06EF C002       678            push AR2
+06F1 7AC8       678            mov R2, #200
+06F3 120038     678            lcall ?Wait_Milli_Seconds
+06F6 D002       678            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+06F8 C002       679            push AR2
+06FA 7AC8       679            mov R2, #200
+06FC 120038     679            lcall ?Wait_Milli_Seconds
+06FF D002       679            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+0701 C002       680            push AR2
+0703 7AC8       680            mov R2, #200
+0705 120038     680            lcall ?Wait_Milli_Seconds
+0708 D002       680            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+070A C0E0       681            push acc
+070C 7401       681            mov a, #1
+070E 14         681            dec a
+070F 1200C7     681            lcall ?Set_Cursor_1 ; Select column and row
+0712 D0E0       681            pop acc
+0714 C083       682            push dph
+0716 C082       682            push dpl
+0718 C0E0       682            push acc
+071A 90012A     682            mov dptr, #ALARM_1
+071D 1200BA     682            lcall ?Send_Constant_String
+0720 D0E0       682            pop acc
+0722 D082       682            pop dpl
+0724 D083       682            pop dph
+0726 C0E0       683            push acc
+0728 7401       683            mov a, #1
+072A 14         683            dec a
+072B 1200C5     683            lcall ?Set_Cursor_2 ; Select column and row
+072E D0E0       683            pop acc
+0730 C083       684            push dph
+0732 C082       684            push dpl
+0734 C0E0       684            push acc
+0736 90013C     684            mov dptr, #ALARM_2
+0739 1200BA     684            lcall ?Send_Constant_String
+073C D0E0       684            pop acc
+073E D082       684            pop dpl
+0740 D083       684            pop dph
+0742            685            
+0742            686   check_ans_button:
+0742            687            
+0742 C0E0       688            push acc
+0744 740F       688            mov a, #15
+0746 14         688            dec a
+0747 1200C5     688            lcall ?Set_Cursor_2 ; Select column and row
+074A D0E0       688            pop acc
+074C C000       689            push ar0
+074E A83C       689            mov r0, alarm_ans
+0750 1200CC     689            lcall ?Display_BCD
+0753 D000       689            pop ar0
+0755            690            
+0755 209024     691            jb SEC_BUTTON, check_ans ; if the 'CLEAR' button is not pressed skip
+0758 C002       692            push AR2
+075A 7A64       692            mov R2, #100
+075C 120038     692            lcall ?Wait_Milli_Seconds
+075F D002       692            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+0761 209018     693            jb SEC_BUTTON, check_ans ; if the 'CLEAR' button is not pressed skip
+0764            694            
+0764 E53C       695            mov a, alarm_ans ;incrementing the minutes
+0766 2401       696            add a, #0x01
+0768 D4         697            da a
+0769            698            
+0769 B41006     699            cjne a, #0x10, no_o_flow_ans  ;making it clr if minutes too high
+076C E4         700            clr a
+076D 7400       701            mov a, #0x00
+076F D4         702            da a
+0770 F53C       703            mov alarm_ans, a
+0772            704            
+0772            705            
+0772            706   no_o_flow_ans:
+0772 F53C       707            mov alarm_ans, a
+0774 8006       708            sjmp check_ans
+0776            709            
+0776            710   check_ans_button_extend:
+0776 020742     711            ljmp check_ans_button
+0779            712   
+0779            713   fail_message_extend: ;can't reach
+0779 0206A5     714            ljmp fail_message
+077C            715   
+077C            716   check_ans:
+077C            717            ;using the set_button
+077C 2092F7     718            jb SET_IT, check_ans_button_extend ; if the 'SET_IT' button is not pressed skip
+077F C002       719            push AR2
+0781 7A64       719            mov R2, #100
+0783 120038     719            lcall ?Wait_Milli_Seconds
+0786 D002       719            pop AR2         ; Debounce delay.  This macro is also in 'LCD_4bit.inc'
+0788 2092EB     720            jb SET_IT, check_ans_button_extend ; if the 'SET_IT' button is not pressed skip         
+078B            721            
+078B            722            ;if answer is right continue
+078B E53D       723            mov a, q_count
+078D B40016     724            cjne a, #0x00, question_1_check
+0790            725            
+0790            726   question_0_check: ;want answer 8         
+0790 E53C       727            mov a, alarm_ans
+0792 9408       728            subb a, #0x08
+0794 D4         729            da a 
+0795 B400E1     730            cjne a, #0x00, fail_message_extend
+0798 7408       731            mov a, #0x08
+079A            732            
+079A 953C       733            subb a, alarm_ans
+079C D4         734            da a 
+079D B400D9     735            cjne a, #0x00, fail_message_extend
+07A0 753D01     736            mov q_count, #0x01
+07A3 0207D5     737            ljmp question_passed
+07A6            738            
+07A6            739   question_1_check:
+07A6 B40116     740            cjne a, #0x01, question_2_check
+07A9 E53C       741            mov a, alarm_ans
+07AB 9406       742            subb a, #0x06
+07AD D4         743            da a 
+07AE B400C8     744            cjne a, #0x00, fail_message_extend
+07B1 7406       745            mov a, #0x06
+07B3            746            
+07B3 953C       747            subb a, alarm_ans
+07B5 D4         748            da a 
+07B6 B400C0     749            cjne a, #0x00, fail_message_extend
+07B9 753D02     750            mov q_count, #0x02
+07BC 0207D5     751            ljmp question_passed
+07BF            752            
+07BF            753   question_2_check:
+07BF E53C       754            mov a, alarm_ans
+07C1 9407       755            subb a, #0x07
+07C3 D4         756            da a 
+07C4 B400B2     757            cjne a, #0x00, fail_message_extend
+07C7 7407       758            mov a, #0x07
+07C9            759            
+07C9 953C       760            subb a, alarm_ans
+07CB D4         761            da a 
+07CC B400AA     762            cjne a, #0x00, fail_message_extend
+07CF 753D00     763            mov q_count, #0x00
+07D2 0207D5     764            ljmp question_passed
+07D5            765            
+07D5            766   question_passed:         
+07D5 7B00       767            mov R3, #0x00
+07D7 C2A9       768            clr ET0  ; Enable timer 0 interrupt
+07D9            769            
+07D9 C0E0       770            push acc
+07DB 7401       770            mov a, #1
+07DD 14         770            dec a
+07DE 1200C7     770            lcall ?Set_Cursor_1 ; Select column and row
+07E1 D0E0       770            pop acc
+07E3 C083       771            push dph
+07E5 C082       771            push dpl
+07E7 C0E0       771            push acc
+07E9 9000E2     771            mov dptr, #Initial_Message
+07EC 1200BA     771            lcall ?Send_Constant_String
+07EF D0E0       771            pop acc
+07F1 D082       771            pop dpl
+07F3 D083       771            pop dph
+07F5            772       
+07F5 C0E0       773            push acc
+07F7 7401       773            mov a, #1
+07F9 14         773            dec a
+07FA 1200C5     773            lcall ?Set_Cursor_2 ; Select column and row
+07FD D0E0       773            pop acc
+07FF C083       774            push dph
+0801 C082       774            push dpl
+0803 C0E0       774            push acc
+0805 9000F3     774            mov dptr, #Initial_Message2
+0808 1200BA     774            lcall ?Send_Constant_String
+080B D0E0       774            pop acc
+080D D082       774            pop dpl
+080F D083       774            pop dph         
+0811            775       
+0811 C0E0       776            push acc
+0813 740D       776            mov a, #13
+0815 14         776            dec a
+0816 1200C7     776            lcall ?Set_Cursor_1 ; Select column and row
+0819 D0E0       776            pop acc     ; the place in the LCD where we want the BCD counter value
+081B C000       777            push ar0
+081D A832       777            mov r0, BCD_counter
+081F 1200CC     777            lcall ?Display_BCD
+0822 D000       777            pop ar0 ; This macro is also in 'LCD_4bit.inc'
+0824            778            
+0824 C0E0       779            push acc
+0826 740A       779            mov a, #10
+0828 14         779            dec a
+0829 1200C7     779            lcall ?Set_Cursor_1 ; Select column and row
+082C D0E0       779            pop acc
+082E C000       780            push ar0
+0830 A833       780            mov r0, BCD_counter1
+0832 1200CC     780            lcall ?Display_BCD
+0835 D000       780            pop ar0
+0837            781            
+0837 C0E0       782            push acc
+0839 7407       782            mov a, #7
+083B 14         782            dec a
+083C 1200C7     782            lcall ?Set_Cursor_1 ; Select column and row
+083F D0E0       782            pop acc
+0841 C000       783            push ar0
+0843 A834       783            mov r0, BCD_counter2
+0845 1200CC     783            lcall ?Display_BCD
+0848 D000       783            pop ar0
+084A            784            
+084A C0E0       785            push acc
+084C 740A       785            mov a, #10
+084E 14         785            dec a
+084F 1200C5     785            lcall ?Set_Cursor_2 ; Select column and row
+0852 D0E0       785            pop acc
+0854 C000       786            push ar0
+0856 A838       786            mov r0, BCD_alarm_min
+0858 1200CC     786            lcall ?Display_BCD
+085B D000       786            pop ar0
+085D            787            
+085D C0E0       788            push acc
+085F 7407       788            mov a, #7
+0861 14         788            dec a
+0862 1200C5     788            lcall ?Set_Cursor_2 ; Select column and row
+0865 D0E0       788            pop acc
+0867 C000       789            push ar0
+0869 A839       789            mov r0, BCD_alarm_hour
+086B 1200CC     789            lcall ?Display_BCD
+086E D000       789            pop ar0
+0870            790   
+0870            791   loop_a:
+0870            792   
+0870 300002     793            jnb half_seconds_flag, loop_extend
+0873 8003       794            sjmp loop_b
+0875            795            
+0875            796            
+0875            797   loop_extend:
+0875 020400     798            ljmp loop
+0878            799   loop_b:
+0878 C200       800            clr half_seconds_flag 
+087A 020400     801       ljmp loop
+087D            802   END

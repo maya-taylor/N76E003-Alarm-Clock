@@ -271,11 +271,23 @@ continue_check_if_60:
 	mov a, #0x01
 	da a
 	mov BCD_counter2, a
+	sjmp skip_hours
 	
+	;clr a
+	;mov a, clk_am_pm
+	;cjne a, #0x00, overflow_to_am
+	;adding a sequence to chnage from AM to PM
+
+do_not_rst_mins:
+	mov BCD_counter1, a
+	sjmp skip_hours
+
+do_not_rst_hours:
+	mov BCD_counter2, a
+	cjne a, #0x12, skip_hours
 	clr a
 	mov a, clk_am_pm
 	cjne a, #0x00, overflow_to_am
-	;adding a sequence to chnage from AM to PM
 	
 overflow_to_pm:
 	mov clk_am_pm, #0x01		
@@ -284,13 +296,7 @@ overflow_to_pm:
 overflow_to_am:
 	mov clk_am_pm, #0x00
 	sjmp skip_hours
-
-do_not_rst_mins:
-	mov BCD_counter1, a
-	sjmp skip_hours
-
-do_not_rst_hours:
-	mov BCD_counter2, a
+	
 	
 skip_hours:
 	setb TR2                ; Start timer 2
