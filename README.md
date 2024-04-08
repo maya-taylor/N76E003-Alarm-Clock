@@ -1,24 +1,19 @@
-# N76E003-Alarm-Clock
+# N76E003 Alarm Clock
+
 Alarm Clock Built on the N76E003 Microcontroller
 
-ALARM CLOCK on N76E003
+**Date:** Jan 27, 2024
 
-Date: Jan 27, 2024
+**Author:** Maya Taylor
 
-Author: Maya Taylor
+## Features:
 
-Features:
+- Adjust clock's hours, minutes, seconds, and AM/PM
+- Set and toggle alarm's hours, minutes, AM/PM
+- Alarm functionality: only activates when in "ON" mode
+- Upon alarm activation, presents a math-like question
+- User response evaluation
+- Incorrect response prompts "Think Harder!!"
+- Alarm deactivates upon correct response
 
-Can adjust the clock's hours, minutes, seconds and AM/PM
-
-Can adjust the alarm's hours, minutes, AM/PM and set it/turn it on
-
-Alarm will not go off if not in "ON" mode
-
-When alarm goes off it will ask you a math-ish question and evaluate your response
-
-If your response is incorrect, you will receive a "Think Harder!!" message
-
-Alarm will only turn off if you enter the answer correctly
-
-Note: buttons can be held down to increase
+**Note:** Buttons can be held for incremental adjustments.
