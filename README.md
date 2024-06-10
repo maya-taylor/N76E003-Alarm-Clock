@@ -2,10 +2,6 @@
 
 Alarm Clock Built on the N76E003 Microcontroller
 
-**Date:** Jan 27, 2024
-
-**Author:** Maya Taylor
-
 ## Features:
 
 - Adjust clock's hours, minutes, seconds, and AM/PM
